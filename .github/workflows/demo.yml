@@ -1,67 +1,46 @@
-name: Deploy website
+name: Manual Deployments
+
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select the environment to deploy to'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      os:
+        description: 'Runner operating system'
+        required: true
+        default: ubuntu-latest
+        type: choice
+        options:
+          - ubuntu-latest
+          - windows-latest
+      region:
+        description: 'Azure region to deploy to'
+        required: true
+        default: 'us-east-1'
+        type: choice
+        options:
+          - us-east-1
+          - us-west-2
+          - eu-central-1
+          - ap-northeast-1
+      node_version:
+        description: 'Specify the node version (e.g., 18)'
+        required: true
+        type: string
+        default: 'latest'
+
 jobs:
-  test:
-    strategy:
-      matrix:
-        node-version: [18, 20, 22]
-        os: [ubuntu-22.04, ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Get code
-        uses: actions/checkout@v7
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Lint code
-        run: npm run lint
-      - name: Test code
-        run: npm run test
-  build:
-    timeout-minutes: 10
-    outputs:
-      js-filename: ${{ steps.publish-js-filename.outputs.js-filename }}
-    needs: test
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Get code
-        uses: actions/checkout@v7
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Build website
-        run: npm run build
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-artifacts
-          path: /var/www/html/
-      - name: Publish JS filename
-        id: publish-js-filename
-        run: find dist/assets/*.js -type f -execdir echo 'js-filename={}' >> $GITHUB_OUTPUT ';'
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.os  }}
+    environment: ${{ inputs.environment }}
+
     steps:
-      - name: Output JS filename
-        run: |
-          echo "JS filename: ${{ needs.build.outputs.js-filename }}"
-      - name: Download build artifacts
-        uses: actions/download-artifact@v7
-        with:
-          name: build-artifacts
-      - name: Deploy
-        run: echo "Deploying..."
+      - name: Checkout repository
+        uses: actions/checkout@v7
