@@ -16,6 +16,8 @@ jobs:
       - name: Test code
         run: npm run test
   build:
+    outputs:
+      js-filename: ${{ steps.publish-js-filename.outputs.js-filename }}
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -30,9 +32,19 @@ jobs:
         with:
           name: build-artifacts
           path: /var/www/html/
+      - name: Publish JS filename
+        id: publish-js-filename
+        run: find dist/assets/*.js -type f -execdir echo 'js-filename={}' >> $GITHUB_OUTPUT' ';'
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Output JS filename
+        run: |
+          echo "JS filename: ${{ needs.build.outputs.js-filename }}"
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: build-artifacts
       - name: Deploy
         run: echo "Deploying..."
